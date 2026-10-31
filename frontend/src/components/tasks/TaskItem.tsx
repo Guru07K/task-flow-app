@@ -14,7 +14,7 @@ const statusLabels: Record<string, string> = {
 
 const TaskItem = ({ task, onEdit, onDelete, onStatusChange, isUpdatingStatus }: TaskItemProps) => {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+    <div className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="wrap-break-word font-semibold text-gray-900">{task.title}</h3>

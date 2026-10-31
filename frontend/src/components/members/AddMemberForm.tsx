@@ -1,12 +1,21 @@
 import { useState } from "react";
+import { Plus } from "lucide-react";
 import { useAddProjectMember } from "../../queries/project.queries";
 import type { ProjectMemberRole } from "../../services/project.service";
+import { memberRoleOptions } from "./member-roles";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface AddMemberFormProps {
   projectId: string;
 }
 
 const AddMemberForm = ({ projectId }: AddMemberFormProps) => {
+  const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<ProjectMemberRole>("member");
 
@@ -21,56 +30,71 @@ const AddMemberForm = ({ projectId }: AddMemberFormProps) => {
         onSuccess: () => {
           setEmail("");
           setRole("member");
+          setOpen(false);
         },
       },
     );
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3 rounded-lg border p-4">
-      <h3 className="font-semibold">Add Project Member</h3>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger render={<Button size="sm" />}>
+        <Plus />
+        Add Member
+      </DialogTrigger>
 
-      <div>
-        <label htmlFor="member-email" className="mb-1 block text-sm">
-          Email
-        </label>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Add Project Member</DialogTitle>
+          <DialogDescription>Enter the email of a registered user and choose their role.</DialogDescription>
+        </DialogHeader>
 
-        <input
-          id="member-email"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="Enter registered user's email"
-          required
-          className="w-full rounded border px-3 py-2"
-        />
-      </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="member-email">Email</Label>
+            <Input
+              id="member-email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Enter registered user's email"
+              required
+            />
+          </div>
 
-      <div>
-        <label htmlFor="member-role" className="mb-1 block text-sm">
-          Role
-        </label>
+          <div className="space-y-2">
+            <Label htmlFor="member-role">Role</Label>
+            <Select items={memberRoleOptions} value={role} onValueChange={(value) => value && setRole(value as ProjectMemberRole)}>
+              <SelectTrigger id="member-role" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {memberRoleOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-        <select
-          id="member-role"
-          value={role}
-          onChange={(e) => setRole(e.target.value as ProjectMemberRole)}
-          className="w-full rounded border px-3 py-2"
-        >
-          <option value="admin">Admin</option>
-          <option value="manager">Manager</option>
-          <option value="tl">TL</option>
-          <option value="member">Member</option>
-        </select>
-      </div>
+          {addMember.isError && (
+            <Alert variant="destructive">
+              <AlertDescription>{addMember.error.message || "Failed to add member."}</AlertDescription>
+            </Alert>
+          )}
 
-      {addMember.isError && <p className="text-sm text-red-600">{addMember.error.message || "Failed to add member."}</p>}
-      {addMember.isSuccess && <p className="text-sm text-green-600">Member added successfully.</p>}
-
-      <button type="submit" disabled={addMember.isPending} className="rounded bg-black px-4 py-2 text-white disabled:opacity-50">
-        {addMember.isPending ? "Adding..." : "Add Member"}
-      </button>
-    </form>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={addMember.isPending}>
+              {addMember.isPending ? "Adding..." : "Add Member"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 };
 

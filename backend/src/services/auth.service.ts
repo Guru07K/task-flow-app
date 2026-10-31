@@ -23,7 +23,9 @@ export const registerUser = async (input: RegisterInput) => {
     password: hashedPassword,
   });
 
-  return user;
+  const { password: _password, ...rest } = user.toObject();
+
+  return rest;
 };
 
 export const loginUser = async (input: LoginInput) => {

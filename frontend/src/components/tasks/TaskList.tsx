@@ -35,7 +35,7 @@ const TaskList = ({ tasks, onEdit, onDelete, onStatusChange, updatingTaskId }: T
         const columnTasks = tasks.filter((task) => task.status === column.status);
 
         return (
-          <section key={column.status} className={`min-w-0 rounded-lg border border-gray-200 border-t-4 bg-gray-50 p-3 ${column.color}`}>
+          <section key={column.status} className={`min-w-0 rounded-xl border border-stone-200 border-t-4 bg-stone-100 p-3 sm:p-4 ${column.color}`}>
             <div className="mb-4 flex items-center justify-between">
               <h3 className="font-semibold text-gray-800">{column.title}</h3>
 

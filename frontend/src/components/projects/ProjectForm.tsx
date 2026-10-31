@@ -2,6 +2,10 @@ import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 const projectSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -46,22 +50,37 @@ const ProjectForm = ({ initialData, onSubmit, isPending }: ProjectFormProps) => 
   }, [initialData, reset]);
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="max-w-md space-y-4">
-      <div>
-        <input {...register("name")} placeholder="Project name" className="w-full rounded border p-2" />
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+      <div className="space-y-2">
+        <Label htmlFor="project-name">Name</Label>
+        <Input
+          id="project-name"
+          {...register("name")}
+          placeholder="Project name"
+          aria-invalid={!!errors.name}
+        />
 
-        {errors.name && <p className="text-sm text-red-500">{errors.name.message}</p>}
+        {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
       </div>
 
-      <div>
-        <textarea {...register("description")} placeholder="Project description" className="w-full rounded border p-2" />
+      <div className="space-y-2">
+        <Label htmlFor="project-description">Description</Label>
+        <Textarea
+          id="project-description"
+          {...register("description")}
+          placeholder="Project description"
+          rows={4}
+          aria-invalid={!!errors.description}
+        />
 
-        {errors.description && <p className="text-sm text-red-500">{errors.description.message}</p>}
+        {errors.description && <p className="text-sm text-destructive">{errors.description.message}</p>}
       </div>
 
-      <button type="submit" disabled={isPending} className="rounded bg-black px-4 py-2 text-white">
-        {isPending ? "Saving..." : "Save"}
-      </button>
+      <div className="flex justify-end">
+        <Button type="submit" disabled={isPending}>
+          {isPending ? "Saving..." : "Save"}
+        </Button>
+      </div>
     </form>
   );
 };

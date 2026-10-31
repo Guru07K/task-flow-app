@@ -1,22 +1,24 @@
 import { useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { useGetProject, useDeleteProject, useGetProjectMembers } from "../queries/project.queries";
+import { useParams } from "react-router-dom";
+import { Plus, Users } from "lucide-react";
+import { useGetProject, useGetProjectMembers } from "../queries/project.queries";
 import { useCreateTask, useDeleteTask, useProjectTasks, useUpdateTask } from "../queries/task.queries";
 
 import TaskForm from "../components/tasks/TaskForm";
 import TaskList from "../components/tasks/TaskList";
 import AddMemberForm from "../components/members/AddMemberForm";
 import MemberList from "../components/members/MemberList";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
 
 const ProjectDetails = () => {
   const { id } = useParams<{ id: string }>();
   const projectId = id!;
 
-  const navigate = useNavigate();
-
   const { data: project, isLoading, isError } = useGetProject(projectId);
-
-  const deleteProject = useDeleteProject();
 
   // Project members
   const { data: members = [], isLoading: membersLoading, isError: membersError } = useGetProjectMembers(projectId);
@@ -33,25 +35,17 @@ const ProjectDetails = () => {
 
   const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
 
+  const [membersOpen, setMembersOpen] = useState(false);
+
   if (isLoading) {
-    return <div className="p-6">Loading project...</div>;
+    return <div className="p-6 text-muted-foreground">Loading project...</div>;
   }
 
   if (isError || !project) {
-    return <div className="p-6">Project not found.</div>;
+    return <div className="p-6 text-muted-foreground">Project not found.</div>;
   }
 
-  const handleDelete = () => {
-    if (!window.confirm("Delete this project?")) {
-      return;
-    }
-
-    deleteProject.mutate(project._id, {
-      onSuccess: () => {
-        navigate("/projects");
-      },
-    });
-  };
+  const memberCountLabel = membersLoading ? "Loading members..." : `${members.length} member${members.length === 1 ? "" : "s"}`;
 
   const handleCreateTask = (data: any) => {
     createTaskMutation.mutate(
@@ -119,102 +113,125 @@ const ProjectDetails = () => {
   };
 
   return (
-    <div className="p-6">
-      <h1 className="text-3xl font-bold">{project.name}</h1>
-
-      <p className="mt-2 text-gray-600">{project.description}</p>
-
-      <div className="mt-6 flex gap-2">
-        <button onClick={() => navigate(`/projects/${project._id}/edit`)} className="rounded border px-4 py-2">
-          Edit
-        </button>
-
-        <button onClick={handleDelete} disabled={deleteProject.isPending} className="rounded border px-4 py-2 disabled:opacity-50">
-          {deleteProject.isPending ? "Deleting..." : "Delete"}
-        </button>
+    <div className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
+      {/* Project header */}
+      <div className="space-y-1">
+        <p className="text-sm font-medium text-muted-foreground">Project</p>
+        <h1 className="break-words text-2xl font-bold tracking-tight sm:text-3xl">{project.name}</h1>
+        {project.description && <p className="max-w-2xl break-words text-muted-foreground">{project.description}</p>}
       </div>
 
-      {/* Project member section */}
-      <section className="mt-8 space-y-4">
-        <h2 className="text-xl font-semibold">Project Members</h2>
+      {/* Project members */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Project Members</CardTitle>
+          <CardDescription>{memberCountLabel}</CardDescription>
+        </CardHeader>
 
-        <AddMemberForm projectId={projectId} />
+        <CardContent className="flex flex-wrap gap-2">
+          <Dialog open={membersOpen} onOpenChange={setMembersOpen}>
+            <DialogTrigger render={<Button variant="outline" />}>
+              <Users />
+              View Members
+            </DialogTrigger>
 
-        {membersLoading ? (
-          <p>Loading members...</p>
-        ) : membersError ? (
-          <p className="text-red-600">Failed to load project members.</p>
-        ) : (
-          <MemberList projectId={projectId} members={members} ownerId={project.owner} />
-        )}
-      </section>
+            <DialogContent className="sm:max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Project Members</DialogTitle>
+                <DialogDescription>{memberCountLabel}</DialogDescription>
+              </DialogHeader>
+
+              {membersLoading ? (
+                <p className="text-sm text-muted-foreground">Loading members...</p>
+              ) : membersError ? (
+                <Alert variant="destructive">
+                  <AlertDescription>Failed to load project members.</AlertDescription>
+                </Alert>
+              ) : (
+                <MemberList projectId={projectId} members={members} ownerId={project.owner} />
+              )}
+            </DialogContent>
+          </Dialog>
+
+          <AddMemberForm projectId={projectId} />
+        </CardContent>
+      </Card>
 
       {/* Tasks */}
-      <section className="mt-8">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-xl font-semibold">Tasks</h2>
-
-          <button
-            onClick={() => {
-              setEditingTask(null);
-              setShowTaskForm((prev) => !prev);
-            }}
-            className="rounded bg-black px-4 py-2 text-white"
-          >
-            {showTaskForm ? "Cancel" : "Create Task"}
-          </button>
-        </div>
-
-        {/* Create task form */}
-        {showTaskForm && (
-          <div className="mb-6 rounded-lg border p-4">
-            <TaskForm members={members} onSubmit={handleCreateTask} isSubmitting={createTaskMutation.isPending} />
-          </div>
-        )}
-
-        {/* Edit task form */}
-        {editingTask && (
-          <div className="mb-6 rounded-lg border p-4">
-            <h3 className="mb-4 font-semibold">Edit Task</h3>
-
-            <TaskForm
-              members={members}
-              initialData={{
-                title: editingTask.title,
-                description: editingTask.description ?? "",
-                assignedTo: editingTask.assignedTo?._id ?? "",
-                status: editingTask.status,
-                priority: editingTask.priority,
-                dueDate: editingTask.dueDate ? editingTask.dueDate.slice(0, 10) : "",
+      <Card>
+        <CardHeader>
+          <CardTitle>Tasks</CardTitle>
+          <CardDescription>Track work across Todo, In Progress and Done.</CardDescription>
+          <CardAction>
+            <Button
+              variant={showTaskForm ? "outline" : "default"}
+              onClick={() => {
+                setEditingTask(null);
+                setShowTaskForm((prev) => !prev);
               }}
-              onSubmit={handleUpdateTask}
-              isSubmitting={updateTaskMutation.isPending}
+            >
+              {!showTaskForm && <Plus />}
+              {showTaskForm ? "Cancel" : "Create Task"}
+            </Button>
+          </CardAction>
+        </CardHeader>
+
+        <CardContent className="space-y-6">
+          {/* Create task form */}
+          {showTaskForm && (
+            <div className="rounded-lg border bg-muted/40 p-4 sm:p-5">
+              <TaskForm members={members} onSubmit={handleCreateTask} isSubmitting={createTaskMutation.isPending} />
+            </div>
+          )}
+
+          {/* Edit task form */}
+          {editingTask && (
+            <div className="space-y-4 rounded-lg border bg-muted/40 p-4 sm:p-5">
+              <h3 className="font-semibold">Edit Task</h3>
+
+              <TaskForm
+                members={members}
+                initialData={{
+                  title: editingTask.title,
+                  description: editingTask.description ?? "",
+                  assignedTo: editingTask.assignedTo?._id ?? "",
+                  status: editingTask.status,
+                  priority: editingTask.priority,
+                  dueDate: editingTask.dueDate ? editingTask.dueDate.slice(0, 10) : "",
+                }}
+                onSubmit={handleUpdateTask}
+                isSubmitting={updateTaskMutation.isPending}
+              />
+
+              <Button type="button" variant="outline" onClick={() => setEditingTask(null)}>
+                Cancel Edit
+              </Button>
+            </div>
+          )}
+
+          {(showTaskForm || editingTask) && <Separator />}
+
+          {/* Task list */}
+          {tasksLoading ? (
+            <p className="text-sm text-muted-foreground">Loading tasks...</p>
+          ) : tasksError ? (
+            <Alert variant="destructive">
+              <AlertDescription>Failed to load tasks.</AlertDescription>
+            </Alert>
+          ) : (
+            <TaskList
+              tasks={editingTask ? tasks.filter((task: any) => task._id !== editingTask._id) : tasks}
+              onEdit={(task) => {
+                setShowTaskForm(false);
+                setEditingTask(task);
+              }}
+              onDelete={handleDeleteTask}
+              onStatusChange={handleStatusChange}
+              updatingTaskId={updatingTaskId}
             />
-
-            <button type="button" onClick={() => setEditingTask(null)} className="mt-3 rounded border px-4 py-2">
-              Cancel Edit
-            </button>
-          </div>
-        )}
-
-        {/* Task list */}
-        {tasksLoading ? (
-          <p>Loading tasks...</p>
-        ) : tasksError ? (
-          <p className="text-red-500">Failed to load tasks.</p>
-        ) : (
-          <TaskList
-            tasks={editingTask ? tasks.filter((task: any) => task._id !== editingTask._id) : tasks}
-            onEdit={(task) => {
-              setShowTaskForm(false);
-              setEditingTask(task);
-            }}
-            onDelete={handleDeleteTask}
-            onStatusChange={handleStatusChange}
-            updatingTaskId={updatingTaskId}
-          />
-        )}
-      </section>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };
