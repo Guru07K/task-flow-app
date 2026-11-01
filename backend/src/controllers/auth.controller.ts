@@ -1,10 +1,5 @@
 import { Request, Response } from "express";
-import {
-  getCurrentUser,
-  loginUser,
-  refreshAccessToken,
-  registerUser,
-} from "../services/auth.service";
+import { getAllUsers, getCurrentUser, loginUser, refreshAccessToken, registerUser, updateUser } from "../services/auth.service";
 
 export const register = async (req: Request, res: Response) => {
   const user = await registerUser(req.body);
@@ -62,5 +57,21 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
 
   res.status(200).json({
     data: user,
+  });
+};
+
+export const updateUserController = async (req: Request, res: Response) => {
+  const user = await updateUser(String(req.params.id), req.body);
+
+  res.status(201).json({
+    message: "User updated successfully",
+    data: user,
+  });
+};
+
+export const getAllUsersController = async (_req: Request, res: Response) => {
+  const users = await getAllUsers();
+  res.status(200).json({
+    data: users,
   });
 };

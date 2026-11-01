@@ -1,8 +1,12 @@
 import bcrypt from "bcrypt";
-import { LoginInput, RegisterInput, UserRole } from "../models/user.model";
+import { LoginInput, RegisterInput, UpdateUserInput, UserRole } from "../models/user.model";
 import { User } from "../schema/user.schema";
 import { ErrorHandler } from "../utils/error-handler";
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from "../utils/jwt";
+import { UserModuleAccess } from "../schema/user-module-access.schema";
+import { Role } from "../schema/role.schema";
+import { IUserAuthorization } from "../types/auth.types";
+import userModuleAccessService from "./user-module-access.service";
 
 const SALT_ROUNDS = 12;
 
@@ -40,9 +44,12 @@ export const loginUser = async (input: LoginInput) => {
     throw new ErrorHandler(401, "Invalid email or password");
   }
 
+  const userModuleAccess = await userModuleAccessService.getUserAuthorization(String(user._id));
+
   const accessToken = generateAccessToken({
     userId: user._id.toString(),
-    role: user.role,
+    role: userModuleAccess.role,
+    modules: userModuleAccess.modules,
   });
 
   const refreshToken = generateRefreshToken({
@@ -72,9 +79,12 @@ export const refreshAccessToken = async (refreshToken: string) => {
       throw new ErrorHandler(401, "User no longer exists");
     }
 
+    const userModuleAccess = await userModuleAccessService.getUserAuthorization(String(user._id));
+
     return generateAccessToken({
       userId: user._id.toString(),
-      role: user.role,
+      role: userModuleAccess.role,
+      modules: userModuleAccess.modules,
     });
   } catch (error) {
     throw new ErrorHandler(401, "Invalid or expired refresh token");
@@ -89,4 +99,19 @@ export const getCurrentUser = async (userId: string) => {
   }
 
   return user;
+};
+
+export const getAllUsers = async () => {
+  const users = await User.find();
+  return users;
+};
+
+export const updateUser = async (userId: string, req: UpdateUserInput) => {
+  let user = await User.findById(userId);
+  if (!user) {
+    throw new ErrorHandler(404, "User not found");
+  }
+
+  Object.assign(user, req);
+  return await user.save();
 };

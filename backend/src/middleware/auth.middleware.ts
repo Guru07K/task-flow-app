@@ -3,11 +3,7 @@ import { verifyAccessToken } from "../utils/jwt";
 import { ErrorHandler } from "../utils/error-handler";
 import { getCurrentUser } from "../services/auth.service";
 
-export const authenticate = async (
-  req: Request,
-  _res: Response,
-  next: NextFunction,
-): Promise<void> => {
+export const authenticate = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -22,6 +18,10 @@ export const authenticate = async (
     if (payload) {
       const user = await getCurrentUser(payload.userId);
       req.user = user;
+      req.authorization = {
+        role: payload.role,
+        modules: payload.modules,
+      };
       next();
     }
   } catch (error) {

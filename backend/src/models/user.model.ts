@@ -1,6 +1,10 @@
 export enum UserRole {
   USER = "USER",
   ADMIN = "ADMIN",
+  SUPER_ADMIN = "SUPER ADMIN",
+  MEMBER = "MEMBER",
+  TL = "TL",
+  MANGER = "MANAGER",
 }
 
 export interface IUser extends Document {
@@ -17,6 +21,10 @@ export interface RegisterInput {
   name: string;
   email: string;
   password: string;
+}
+
+export interface UpdateUserInput extends Partial<RegisterInput> {
+  role?: UserRole;
 }
 
 export interface LoginInput {

@@ -9,6 +9,7 @@ import CreateProject from "./pages/CreateProject";
 import ProjectDetails from "./pages/ProjectDetails";
 import EditProject from "./pages/EditProject";
 import Projects from "./pages/Projects";
+import { AuthorizedModules } from "./types/authorization-permissions";
 
 function App() {
   return (
@@ -21,10 +22,13 @@ function App() {
         <Route element={<ProtectedRoute />}>
           <Route element={<AppLayout />}>
             <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/projects" element={<Projects />} />
-            <Route path="/projects/create" element={<CreateProject />} />
-            <Route path="/projects/:id" element={<ProjectDetails />} />
-            <Route path="/projects/:id/edit" element={<EditProject />} />
+
+            <Route element={<ProtectedRoute moduleName={AuthorizedModules.ProjectManagement} />}>
+              <Route path="/projects" element={<Projects />} />
+              <Route path="/projects/create" element={<CreateProject />} />
+              <Route path="/projects/:id" element={<ProjectDetails />} />
+              <Route path="/projects/:id/edit" element={<EditProject />} />
+            </Route>
           </Route>
         </Route>
       </Routes>

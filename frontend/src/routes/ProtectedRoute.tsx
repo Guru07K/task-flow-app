@@ -1,11 +1,17 @@
 import { useSelector } from "react-redux";
 import type { RootState } from "../store/store";
 import { Navigate, Outlet } from "react-router-dom";
+import { useAuthorization } from "@/hooks/useAuthorization";
 
-const ProtectedRoute = () => {
-  const { accessToken, isInitialized } = useSelector(
-    (state: RootState) => state.auth,
-  );
+interface ProtectedRouteProps {
+  moduleName?: string;
+  permission?: string;
+}
+
+const ProtectedRoute = ({ moduleName, permission }: ProtectedRouteProps) => {
+  const { accessToken, isInitialized } = useSelector((state: RootState) => state.auth);
+
+  const { hasModuleAccess, hasPermission } = useAuthorization();
 
   if (!isInitialized) {
     return <div>Loading...</div>;
@@ -13,6 +19,14 @@ const ProtectedRoute = () => {
 
   if (!accessToken) {
     return <Navigate to={"/login"} replace />;
+  }
+
+  if (moduleName && !hasModuleAccess(moduleName)) {
+    return <Navigate to="/unauthorized" replace />;
+  }
+
+  if (permission && !hasPermission(permission)) {
+    return <Navigate to="/unauthorized" replace />;
   }
 
   return <Outlet />;

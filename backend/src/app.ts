@@ -5,6 +5,7 @@ import cookieParser from "cookie-parser";
 import authRoutes from "./routes/auth.routes";
 import projectRoutes from "./routes/project.routes";
 import taskRoutes from "./routes/task.routes";
+import userModuleAccessRoutes from "./routes/user-module-access.routes";
 
 const app = express();
 
@@ -27,6 +28,8 @@ app.get("/api/health", (_req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/projects", projectRoutes);
 app.use("/api/projects", taskRoutes);
+
+app.use("/api/user-module-access", userModuleAccessRoutes);
 
 app.use(errorMiddleware);
 

@@ -4,8 +4,10 @@ import "./index.css";
 import App from "./App";
 import { store } from "./store/store";
 import AuthProvider from "./providers/AuthProvider";
-import { QueryClientProvider } from "@tanstack/react-query";
-import { queryClient } from "./lib/query-client";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+const queryClient = new QueryClient();
+console.log("queryClient", queryClient);
 
 createRoot(document.getElementById("root")!).render(
   <Provider store={store}>

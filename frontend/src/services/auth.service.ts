@@ -11,6 +11,17 @@ interface RegisterInput {
   password: string;
 }
 
+export interface User {
+  _id: string;
+  name: string;
+  email: string;
+}
+
+export const getAllUsers = async (): Promise<User[]> => {
+  const res = await api.get("/auth/users");
+  return res.data.data;
+};
+
 export const loginUser = async (input: LoginInput) => {
   const res = await api.post("/auth/login", input);
   return res.data;
