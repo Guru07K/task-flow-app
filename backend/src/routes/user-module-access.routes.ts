@@ -1,28 +1,23 @@
-import { NextFunction, Request, Response, Router } from "express";
+import { Router } from "express";
 import { assignUserModuleAccess, getUserModuleAccess } from "../controllers/user-module-access.controller";
 import { authenticate } from "../middleware/auth.middleware";
-import { ErrorHandler } from "../utils/error-handler";
-import { assignUserModuleAccessSchema } from "../validators/user-module-access.validator";
+import { authorizeRole } from "../middleware/authorization.middleware";
 import { validate } from "../middleware/validation.middleware";
+import { AuthorizedRoles } from "../types/authorization_permissions.types";
+import { assignUserModuleAccessSchema } from "../validators/user-module-access.validator";
 
 const router = Router();
 
 router.use(authenticate);
 
-// Only Super Admin can assign user module access.
+// Only RBAC admins can read or assign user module access.
+router.get("/:userId", authorizeRole(AuthorizedRoles.SuperAdmin, AuthorizedRoles.Admin), getUserModuleAccess);
+
 router.post(
   "/",
-  (req: Request, res: Response, next: NextFunction) => {
-    if (req.user?.role !== "ADMIN") {
-      return next(new ErrorHandler(403, "Access denied"));
-    }
-
-    next();
-  },
+  authorizeRole(AuthorizedRoles.SuperAdmin, AuthorizedRoles.Admin),
   validate(assignUserModuleAccessSchema),
   assignUserModuleAccess,
 );
-
-router.get("/:userId", getUserModuleAccess);
 
 export default router;

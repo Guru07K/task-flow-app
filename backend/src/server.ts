@@ -11,9 +11,9 @@ const PORT = process.env.PORT || 5000;
 const startServer = async () => {
   await connectDatabase();
 
-  await createKafkaTopics();
-  await connectKafkaProducer();
-  await startOutboxPublisher();
+  // await createKafkaTopics();
+  // await connectKafkaProducer();
+  // await startOutboxPublisher();
 
   await seedRoles();
 

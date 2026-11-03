@@ -9,25 +9,30 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute = ({ moduleName, permission }: ProtectedRouteProps) => {
-  const { accessToken, isInitialized } = useSelector((state: RootState) => state.auth);
+  const isInitialized = useSelector((state: RootState) => state.auth.isInitialized);
 
-  const { hasModuleAccess, hasPermission } = useAuthorization();
+  const { status, hasModuleAccess, hasPermission } = useAuthorization();
 
   if (!isInitialized) {
     return <div>Loading...</div>;
   }
 
-  if (!accessToken) {
+  if (status === "unauthenticated") {
     return <Navigate to={"/login"} replace />;
+  }
+
+  if (status === "verifying") {
+    return <div>Loading...</div>;
   }
 
   if (moduleName && !hasModuleAccess(moduleName)) {
     return <Navigate to="/unauthorized" replace />;
   }
 
-  if (permission && !hasPermission(permission)) {
+  if (moduleName && permission && !hasPermission(moduleName, permission)) {
     return <Navigate to="/unauthorized" replace />;
   }
+
 
   return <Outlet />;
 };

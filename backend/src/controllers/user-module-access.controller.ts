@@ -12,7 +12,7 @@ export const assignUserModuleAccess = async (req: Request, res: Response) => {
 };
 
 export const getUserModuleAccess = async (req: Request, res: Response) => {
-  const userAccess = await userModuleAccessService.getUserAuthorization(String(req.params.userId));
+  const userAccess = await userModuleAccessService.getUserAccess(String(req.params.userId));
   res.status(200).json({
     data: userAccess,
   });

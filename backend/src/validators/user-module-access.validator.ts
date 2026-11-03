@@ -1,9 +1,14 @@
 import Joi from "joi";
+import { AuthorizedAccessPermissions, AuthorizedModules } from "../types/authorization_permissions.types";
 
 const moduleAccessSchema = Joi.object({
-  name: Joi.string().trim().lowercase().required(),
+  name: Joi.string()
+    .trim()
+    .lowercase()
+    .valid(...Object.values(AuthorizedModules))
+    .required(),
   access: Joi.boolean().required(),
-  permissions: Joi.array(),
+  permissions: Joi.array().items(Joi.string().valid(...Object.values(AuthorizedAccessPermissions))).unique().default([]),
 });
 
 export const assignUserModuleAccessSchema = Joi.object({

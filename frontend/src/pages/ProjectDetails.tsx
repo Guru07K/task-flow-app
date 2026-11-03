@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
+import { useAuthorization } from "@/hooks/useAuthorization";
 
 const ProjectDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -22,6 +23,7 @@ const ProjectDetails = () => {
 
   // Project members
   const { data: members = [], isLoading: membersLoading, isError: membersError } = useGetProjectMembers(projectId);
+  const { hasPermission } = useAuthorization();
 
   // Tasks
   const { data: tasks = [], isLoading: tasksLoading, isError: tasksError } = useProjectTasks(projectId);
@@ -122,7 +124,9 @@ const ProjectDetails = () => {
       </div>
 
       {/* Project members */}
-      <Card>
+      {/* disabled={!hasPermission("project-management", "project:create") */}
+
+      {hasPermission("project-members", "project-members:view") && (<Card>
         <CardHeader>
           <CardTitle>Project Members</CardTitle>
           <CardDescription>{memberCountLabel}</CardDescription>
@@ -155,7 +159,8 @@ const ProjectDetails = () => {
 
           <AddMemberForm projectId={projectId} />
         </CardContent>
-      </Card>
+      </Card>)}
+
 
       {/* Tasks */}
       <Card>

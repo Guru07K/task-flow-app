@@ -3,12 +3,14 @@ import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useDeleteProject, useGetProjects } from "../queries/project.queries";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAuthorization } from "@/hooks/useAuthorization";
 
 const Projects = () => {
   const navigate = useNavigate();
 
   const deleteProject = useDeleteProject();
   const { data: projects, isLoading, isError } = useGetProjects();
+  const { hasPermission } = useAuthorization();
 
   if (isLoading) {
     return <div className="p-6 text-muted-foreground">Loading projects...</div>;
@@ -33,7 +35,8 @@ const Projects = () => {
             <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Projects</h1>
           </div>
 
-          <Button onClick={() => navigate("/projects/create")}>
+          <Button onClick={() => navigate("/projects/create")} disabled={!hasPermission("project-management", "project:create")}
+          >
             <Plus />
             Create Project
           </Button>
@@ -60,7 +63,7 @@ const Projects = () => {
                     View
                   </Button>
 
-                  <Button variant="outline" size="sm" onClick={() => navigate(`/projects/${project._id}/edit`)}>
+                  <Button variant="outline" size="sm" onClick={() => navigate(`/projects/${project._id}/edit`)} disabled={!hasPermission("project-management", "project:edit")}>
                     <Pencil />
                     Edit
                   </Button>
@@ -70,7 +73,8 @@ const Projects = () => {
                     size="sm"
                     className="text-destructive hover:text-destructive"
                     onClick={() => handleDelete(project._id)}
-                    disabled={deleteProject.isPending}
+                    disabled={deleteProject.isPending || !hasPermission("project-management", "project:delete")}
+
                   >
                     <Trash2 />
                     Delete

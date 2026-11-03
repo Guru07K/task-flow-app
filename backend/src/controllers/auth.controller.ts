@@ -1,5 +1,13 @@
 import { Request, Response } from "express";
 import { getAllUsers, getCurrentUser, loginUser, refreshAccessToken, registerUser, updateUser } from "../services/auth.service";
+import { REFRESH_TOKEN_MAX_AGE_MS } from "../utils/jwt";
+
+const refreshCookieOptions = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "strict" as const,
+  maxAge: REFRESH_TOKEN_MAX_AGE_MS,
+};
 
 export const register = async (req: Request, res: Response) => {
   const user = await registerUser(req.body);
@@ -14,12 +22,7 @@ export const register = async (req: Request, res: Response) => {
 export const login = async (req: Request, res: Response) => {
   const { accessToken, refreshToken, user } = await loginUser(req.body);
 
-  res.cookie("refreshToken", refreshToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-    maxAge: 7 * 24 * 60 * 60 * 100,
-  });
+  res.cookie("refreshToken", refreshToken, refreshCookieOptions);
 
   res.status(200).json({
     message: "Login successful",
@@ -61,9 +64,9 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
 };
 
 export const updateUserController = async (req: Request, res: Response) => {
-  const user = await updateUser(String(req.params.id), req.body);
+  const user = await updateUser(String(req.params.id), req.authorization.role, req.body);
 
-  res.status(201).json({
+  res.status(200).json({
     message: "User updated successfully",
     data: user,
   });

@@ -17,7 +17,15 @@ export const MODULE_PERMISSIONS = {
   "project-management": [
     { label: "View Projects", value: "project:view" },
     { label: "Create Project", value: "project:create" },
+    { label: "Update Project", value: "project:update" },
     { label: "Edit Project", value: "project:edit" },
     { label: "Delete Project", value: "project:delete" },
+  ],
+
+  "project-members": [
+    { label: "View Project Members", value: "project-members:view" },
+    { label: "Create Project Member", value: "project-members:create" },
+    { label: "Edit Project Member", value: "project-members:edit" },
+    { label: "Delete Project Member", value: "project-members:delete" },
   ],
 } as const;

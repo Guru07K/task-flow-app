@@ -1,4 +1,5 @@
 import bcrypt from "bcrypt";
+import { Types } from "mongoose";
 import { LoginInput, RegisterInput, UpdateUserInput, UserRole } from "../models/user.model";
 import { User } from "../schema/user.schema";
 import { ErrorHandler } from "../utils/error-handler";
@@ -6,6 +7,7 @@ import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from ".
 import { UserModuleAccess } from "../schema/user-module-access.schema";
 import { Role } from "../schema/role.schema";
 import { IUserAuthorization } from "../types/auth.types";
+import { AuthorizedRoles } from "../types/authorization_permissions.types";
 import userModuleAccessService from "./user-module-access.service";
 
 const SALT_ROUNDS = 12;
@@ -106,12 +108,50 @@ export const getAllUsers = async () => {
   return users;
 };
 
-export const updateUser = async (userId: string, req: UpdateUserInput) => {
-  let user = await User.findById(userId);
+export const updateUser = async (userId: string, actorRole: string, input: UpdateUserInput) => {
+  if (!Types.ObjectId.isValid(userId)) {
+    throw new ErrorHandler(400, "Invalid user id");
+  }
+
+  const isSuperAdmin = actorRole === AuthorizedRoles.SuperAdmin;
+
+  if (input.role !== undefined && !isSuperAdmin) {
+    throw new ErrorHandler(403, "Only super admins can change user roles");
+  }
+
+  const user = await User.findById(userId);
   if (!user) {
     throw new ErrorHandler(404, "User not found");
   }
 
-  Object.assign(user, req);
-  return await user.save();
+  // A user with no RBAC record has no super-admin role; any other failure must still propagate.
+  const targetRole = await userModuleAccessService
+    .getUserAuthorization(userId)
+    .then((access) => access.role)
+    .catch((error: ErrorHandler) => {
+      if (error.statusCode === 403) return null;
+      throw error;
+    });
+
+  if (targetRole === AuthorizedRoles.SuperAdmin && !isSuperAdmin) {
+    throw new ErrorHandler(403, "Only super admins can modify a super admin");
+  }
+
+  const { password, ...fields } = input;
+
+  Object.assign(user, fields);
+  if (password) {
+    user.password = await bcrypt.hash(password, SALT_ROUNDS);
+  }
+
+  try {
+    const saved = await user.save();
+    const { password: _password, ...safeUser } = saved.toObject();
+    return safeUser;
+  } catch (error) {
+    if ((error as { code?: number }).code === 11000) {
+      throw new ErrorHandler(409, "Email already exists");
+    }
+    throw error;
+  }
 };

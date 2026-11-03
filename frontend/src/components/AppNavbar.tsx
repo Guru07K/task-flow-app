@@ -1,4 +1,5 @@
 import { useDispatch } from "react-redux";
+import { useQueryClient } from "@tanstack/react-query";
 import { logoutUser } from "../services/auth.service";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { clearAccessToken } from "../slices/auth.slice";
@@ -9,6 +10,7 @@ import NotificationBell from "./NotificationBell";
 const AppNavbar = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { pathname } = useLocation();
 
   const handleLogout = async () => {
@@ -16,6 +18,7 @@ const AppNavbar = () => {
       await logoutUser();
     } finally {
       dispatch(clearAccessToken());
+      queryClient.clear();
       navigate("/login", { replace: true });
     }
   };

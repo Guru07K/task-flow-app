@@ -9,6 +9,7 @@ import CreateProject from "./pages/CreateProject";
 import ProjectDetails from "./pages/ProjectDetails";
 import EditProject from "./pages/EditProject";
 import Projects from "./pages/Projects";
+import Unauthorized from "./pages/Unauthorized";
 import { AuthorizedModules } from "./types/authorization-permissions";
 
 function App() {
@@ -18,6 +19,7 @@ function App() {
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/unauthorized" element={<Unauthorized />} />
 
         <Route element={<ProtectedRoute />}>
           <Route element={<AppLayout />}>
@@ -25,10 +27,19 @@ function App() {
 
             <Route element={<ProtectedRoute moduleName={AuthorizedModules.ProjectManagement} />}>
               <Route path="/projects" element={<Projects />} />
-              <Route path="/projects/create" element={<CreateProject />} />
               <Route path="/projects/:id" element={<ProjectDetails />} />
-              <Route path="/projects/:id/edit" element={<EditProject />} />
+
+              <Route element={<ProtectedRoute moduleName={AuthorizedModules.ProjectManagement} permission="project:create" />}>
+                <Route path="/projects/create" element={<CreateProject />} />
+              </Route>
+
+              <Route element={<ProtectedRoute moduleName={AuthorizedModules.ProjectManagement} permission="project:edit" />}>
+                <Route path="/projects/:id/edit" element={<EditProject />} />
+              </Route>
             </Route>
+
+
+
           </Route>
         </Route>
       </Routes>

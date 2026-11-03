@@ -15,6 +15,21 @@ export const authorizedUser = (...userRole: string[]): RequestHandler => {
   };
 };
 
+export const authorizeRole = (...roles: string[]): RequestHandler => {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    const authorization = req.authorization;
+    if (!authorization) {
+      return next(new ErrorHandler(401, "Authorization required"));
+    }
+
+    if (!roles.includes(authorization.role)) {
+      return next(new ErrorHandler(403, "Access denied"));
+    }
+
+    next();
+  };
+};
+
 export const authorizeModule = (moduleName: string): RequestHandler => {
   return (req: Request, res: Response, next: NextFunction): void => {
     const authorization = req.authorization;

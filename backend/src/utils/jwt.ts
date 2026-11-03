@@ -48,7 +48,7 @@ const ACCESS_TOKEN_PRIVATE_KEY = readFileSync(resolve(process.cwd(), ACCESS_TOKE
 const ACCESS_TOKEN_PUBLIC_KEY = readFileSync(resolve(process.cwd(), ACCESS_TOKEN_PUBLIC_KEY_PATH), "utf8");
 
 const ACCESS_TOKEN_EXPIRES_IN = "15m";
-const REFRESH_TOKEN_EXPIRES_IN = "7d";
+export const REFRESH_TOKEN_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
 const ACCESS_TOKEN_ISSUER = "taskflow-api";
 const ACCESS_TOKEN_AUDIENCE = "taskflow-services";
@@ -65,7 +65,8 @@ export const generateAccessToken = (payload: AccessTokenPayload) => {
 
 export const generateRefreshToken = (payload: RefreshTokenPayload) => {
   return jwt.sign(payload, REFRESH_TOKEN_SECRET, {
-    expiresIn: REFRESH_TOKEN_EXPIRES_IN,
+    algorithm: "HS256",
+    expiresIn: REFRESH_TOKEN_MAX_AGE_MS / 1000,
   });
 };
 
@@ -78,5 +79,5 @@ export const verifyAccessToken = (token: string): AccessTokenPayload => {
 };
 
 export const verifyRefreshToken = (token: string): RefreshTokenPayload => {
-  return jwt.verify(token, REFRESH_TOKEN_SECRET) as RefreshTokenPayload;
+  return jwt.verify(token, REFRESH_TOKEN_SECRET, { algorithms: ["HS256"] }) as RefreshTokenPayload;
 };

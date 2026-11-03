@@ -18,16 +18,31 @@ import {
   updateProjectMemberSchema,
   updateProjectSchema,
 } from "../validators/project.validator";
+import { authorizeModule, authorizePermission } from "../middleware/authorization.middleware";
+import { AuthorizedAccessPermissions, AuthorizedModules } from "../types/authorization_permissions.types";
 
 const router = Router();
 
 router.use(authenticate);
+router.use(authorizeModule(AuthorizedModules.ProjectManagement));
 
-router.post("/", validate(createProjectSchema), createProjectController);
-router.get("/", getMyProjectsController);
-router.get("/:id", getProjectController);
-router.patch("/:id", validate(updateProjectSchema), updateProjectController);
-router.delete("/:id", deleteProjectController);
+router.post(
+  "/",
+  validate(createProjectSchema),
+  authorizePermission(AuthorizedAccessPermissions.ProjectCreate),
+  createProjectController,
+);
+
+router.get("/", authorizePermission(AuthorizedAccessPermissions.ProjectView), getMyProjectsController);
+router.get("/:id", authorizePermission(AuthorizedAccessPermissions.ProjectView), getProjectController);
+
+router.patch(
+  "/:id",
+  validate(updateProjectSchema),
+  authorizePermission(AuthorizedAccessPermissions.ProjectUpdate),
+  updateProjectController,
+);
+router.delete("/:id", authorizePermission(AuthorizedAccessPermissions.ProjectDelete), deleteProjectController);
 
 router.post("/:id/members", validate(addProjectMemeberSchema), addProjectMemberController);
 router.get("/:id/members", getProjectMembersController);

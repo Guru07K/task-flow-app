@@ -1,3 +1,6 @@
 node_modules
 .env
 dist
+# RSA key material must never be committed
+*.pem
+keys/

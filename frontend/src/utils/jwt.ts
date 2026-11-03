@@ -1,5 +1,5 @@
 import type { IAccessTokenPayload } from "@/types/authorization.types";
-import { importSPKI, jwtVerify } from "jose";
+import { errors, importSPKI, jwtVerify } from "jose";
 
 const PUBLIC_KEY = import.meta.env.VITE_ACCESS_TOKEN_PUBLIC_KEY?.replace(/\\n/g, "\n");
 
@@ -17,7 +17,12 @@ const getPublicKey = () => {
   return publicKeyPromise;
 };
 
-export const verifyAccessToken = async (token: string): Promise<IAccessTokenPayload | null> => {
+export type AccessTokenVerification =
+  | { status: "valid"; payload: IAccessTokenPayload }
+  | { status: "expired" }
+  | { status: "invalid" };
+
+export const verifyAccessToken = async (token: string): Promise<AccessTokenVerification> => {
   try {
     const publicKey = await getPublicKey();
 
@@ -28,11 +33,15 @@ export const verifyAccessToken = async (token: string): Promise<IAccessTokenPayl
     });
 
     if (typeof payload.userId !== "string" || typeof payload.role !== "string" || !Array.isArray(payload.modules)) {
-      return null;
+      return { status: "invalid" };
     }
 
-    return payload as unknown as IAccessTokenPayload;
-  } catch {
-    return null;
+    return { status: "valid", payload: payload as unknown as IAccessTokenPayload };
+  } catch (error) {
+    if (error instanceof errors.JWTExpired) {
+      return { status: "expired" };
+    }
+
+    return { status: "invalid" };
   }
 };

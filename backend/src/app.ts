@@ -6,6 +6,7 @@ import authRoutes from "./routes/auth.routes";
 import projectRoutes from "./routes/project.routes";
 import taskRoutes from "./routes/task.routes";
 import userModuleAccessRoutes from "./routes/user-module-access.routes";
+import roleRoutes from "./routes/role.routes";
 
 const app = express();
 
@@ -30,6 +31,7 @@ app.use("/api/projects", projectRoutes);
 app.use("/api/projects", taskRoutes);
 
 app.use("/api/user-module-access", userModuleAccessRoutes);
+app.use("/api/roles", roleRoutes);
 
 app.use(errorMiddleware);
 

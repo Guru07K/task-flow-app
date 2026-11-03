@@ -33,5 +33,5 @@ export const registerUser = async (input: RegisterInput) => {
 };
 
 export const logoutUser = async () => {
-  await api.post("auth/logout");
+  await api.post("/auth/logout");
 };
