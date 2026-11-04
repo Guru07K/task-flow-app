@@ -39,7 +39,7 @@ router.get("/:id", authorizePermission(AuthorizedAccessPermissions.ProjectView),
 router.patch(
   "/:id",
   validate(updateProjectSchema),
-  authorizePermission(AuthorizedAccessPermissions.ProjectUpdate),
+  authorizePermission(AuthorizedAccessPermissions.ProjectEdit),
   updateProjectController,
 );
 router.delete("/:id", authorizePermission(AuthorizedAccessPermissions.ProjectDelete), deleteProjectController);

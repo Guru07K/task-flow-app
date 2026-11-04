@@ -9,6 +9,7 @@ import {
 import { ErrorHandler } from "../utils/error-handler";
 import mongoose from "mongoose";
 import { User } from "../schema/user.schema";
+import cacheService from "../config/redis/cache";
 
 export const createProject = async (input: CreateProjectInput, userId: string) => {
   const project = await Project.create({
@@ -23,10 +24,21 @@ export const createProject = async (input: CreateProjectInput, userId: string) =
     ],
   });
 
+  await cacheService.incrementVersion("project:version");
+
   return project;
 };
 
 export const getMyProjects = async (userId: string) => {
+  const version = await cacheService.getVersion("project:version");
+  if (version) {
+    const cacheKey = cacheService.buildVersionedKey("project", version, `user:${userId}`);
+    const cachedProjects = await cacheService.get(cacheKey);
+    if (cachedProjects) {
+      return cachedProjects;
+    }
+  }
+
   const projects = await Project.find({
     "members.user": userId,
   }).sort({ createdAt: -1 });
@@ -35,6 +47,19 @@ export const getMyProjects = async (userId: string) => {
 };
 
 export const getProjectById = async (projectId: string, userId: string) => {
+  const version = await cacheService.getVersion("project:version");
+
+  let cacheKey: string | null = null;
+
+  if (version) {
+    cacheKey = cacheService.buildVersionedKey("project", version, `id:${projectId}:user:${userId}`);
+    const cachedProject = await cacheService.get(cacheKey);
+
+    if (cachedProject) {
+      return cachedProject;
+    }
+  }
+
   if (!mongoose.Types.ObjectId.isValid(projectId)) {
     throw new ErrorHandler(400, "Invalid project ID");
   }
@@ -46,6 +71,10 @@ export const getProjectById = async (projectId: string, userId: string) => {
 
   if (!project) {
     throw new ErrorHandler(404, "Project not found");
+  }
+
+  if (cacheKey) {
+    await cacheService.set(cacheKey, project);
   }
 
   return project;
@@ -75,6 +104,8 @@ export const updateProject = async (projectId: string, input: UpdateProjectInput
 
   await project.save();
 
+  await cacheService.incrementVersion("project:version");
+
   return project;
 };
 
@@ -92,6 +123,7 @@ export const deleteProject = async (projectId: string, userId: string) => {
     throw new ErrorHandler(404, "Project not found or you are not the owner");
   }
 
+  await cacheService.incrementVersion("project:version");
   return project;
 };
 
@@ -120,11 +152,16 @@ export const addProjectMember = async (projectId: string, userId: string, input:
 
   await project.save();
 
+  await cacheService.incrementVersion("project:version");
+
   return project;
 };
 
 export const getProjectMembers = async (projectId: string, userId: string) => {
-  const project = await Project.findOne({ _id: projectId, "members.user": userId }).populate("members.user", "name email role");
+  const project = await Project.findOne({ _id: projectId, "members.user": userId }).populate(
+    "members.user",
+    "name email role",
+  );
   if (!project) {
     throw new ErrorHandler(404, "Project not found");
   }
@@ -132,7 +169,12 @@ export const getProjectMembers = async (projectId: string, userId: string) => {
   return project.members;
 };
 
-export const updateProjectMemberRole = async (projectId: string, input: UpdateProjectMemberInput, memberUserId: string, userId: string) => {
+export const updateProjectMemberRole = async (
+  projectId: string,
+  input: UpdateProjectMemberInput,
+  memberUserId: string,
+  userId: string,
+) => {
   const project = await Project.findOne({ _id: projectId, owner: userId });
   if (!project) {
     throw new ErrorHandler(404, "Project not found or you are not the owner");
@@ -153,6 +195,8 @@ export const updateProjectMemberRole = async (projectId: string, input: UpdatePr
   }
 
   await project.save();
+
+  await cacheService.incrementVersion("project:version");
 
   return project;
 };
@@ -180,6 +224,8 @@ export const removeProjectMember = async (projectId: string, memberUserId: strin
   project.members = project.members.filter((member) => member.user.toString() !== memberUserId);
 
   await project.save();
+
+  await cacheService.incrementVersion("project:version");
 
   return project;
 };

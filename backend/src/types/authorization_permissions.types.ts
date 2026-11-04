@@ -13,7 +13,6 @@ export enum AuthorizedAccessPermissions {
   TaskDelete = "task:delete",
   ProjectView = "project:view",
   ProjectCreate = "project:create",
-  ProjectUpdate = "project:update",
   ProjectEdit = "project:edit",
   ProjectDelete = "project:delete",
   UserView = "user:view",

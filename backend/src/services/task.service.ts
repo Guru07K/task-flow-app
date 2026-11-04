@@ -6,6 +6,7 @@ import { Task } from "../schema/task.schema";
 import mongoose from "mongoose";
 import { OutboxStatus } from "../models/outbox.model";
 import { Outbox } from "../schema/outbox.schema";
+import cacheService from "../config/redis/cache";
 
 export const createTask = async (projectId: string, input: CreateTaskInput, userId: string) => {
   const project = await Project.findOne({
@@ -77,7 +78,7 @@ export const createTask = async (projectId: string, input: CreateTaskInput, user
     if (!createdTask) {
       throw new ErrorHandler(500, "Failed to create task");
     }
-
+    await cacheService.incrementVersion("task:version");
     return createdTask;
   } finally {
     await session.endSession();
@@ -111,7 +112,11 @@ export const updateTask = async (taskId: string, projectId: string, input: Updat
       const assignmentWasProvided = Object.prototype.hasOwnProperty.call(input, "assignedTo");
 
       const nextAssignee =
-        assignmentWasProvided && input.assignedTo ? String(input.assignedTo) : assignmentWasProvided ? null : previousAssignee;
+        assignmentWasProvided && input.assignedTo
+          ? String(input.assignedTo)
+          : assignmentWasProvided
+            ? null
+            : previousAssignee;
 
       if (nextAssignee) {
         const isValidAssignedUser = project.members.some((member) => member.user.toString() === nextAssignee);
@@ -156,6 +161,8 @@ export const updateTask = async (taskId: string, projectId: string, input: Updat
       throw new ErrorHandler(500, "Failed to update task");
     }
 
+    await cacheService.incrementVersion("task:version");
+
     return updatedTask;
   } finally {
     await session.endSession();
@@ -168,14 +175,49 @@ export const getProjectTasks = async (projectId: string, userId: string) => {
     throw new ErrorHandler(404, "Project not found");
   }
 
-  const task = await Task.find({ project: projectId }).populate("assignedTo").populate("createdBy").sort({ createdAt: -1 });
+  const version = await cacheService.getVersion("task:version");
+  let cacheKey: string | null = null;
+
+  if (version) {
+    cacheKey = await cacheService.buildVersionedKey("task", version, `project:${projectId}:user:${userId}:list`);
+    const cachedTasks = await cacheService.get(cacheKey);
+    if (cachedTasks) {
+      // console.log("TASK CACHE HIT");
+      return cachedTasks;
+    }
+  }
+
+  const task = await Task.find({ project: projectId })
+    .populate("assignedTo")
+    .populate("createdBy")
+    .sort({ createdAt: -1 });
+
+  if (cacheKey) {
+    await cacheService.set(cacheKey, task);
+  }
   return task;
 };
 
 export const getTask = async (taskId: string, projectId: string) => {
+  const version = await cacheService.getVersion("task:version");
+
+  let cacheKey: string | null = null;
+  if (version !== null) {
+    cacheKey = cacheService.buildVersionedKey("task", version, `id:${taskId}:project:${projectId}`);
+    const cachedTask = await cacheService.get(cacheKey);
+
+    if (cachedTask !== null) {
+      return cachedTask;
+    }
+  }
+
   const task = await Task.findOne({ _id: taskId, project: projectId }).populate("assignedTo").populate("createdBy");
   if (!task) {
     throw new ErrorHandler(404, "Task not found");
+  }
+
+  if (cacheKey) {
+    await cacheService.set(cacheKey, task);
   }
   return task;
 };
@@ -186,6 +228,8 @@ export const deleteTask = async (taskId: string, projectId: string) => {
   if (!task) {
     throw new ErrorHandler(404, "Task not found");
   }
+
+  await cacheService.incrementVersion("task:version");
 
   return task;
 };
