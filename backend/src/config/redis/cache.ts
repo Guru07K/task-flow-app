@@ -1,3 +1,5 @@
+import mongoose from "mongoose";
+import { RedisCacheVersion } from "../../schema/redis-cache-version.schema";
 import redisClient from "./redis";
 
 const DEFAULT_TTL = 300;
@@ -35,62 +37,100 @@ class CacheService {
     }
   }
 
-  async getVersion(versionKey: string): Promise<number | null> {
-    try {
-      const value = await redisClient.get(versionKey);
-
-      if (value !== null) {
-        const version = Number(value);
-
-        if (!Number.isSafeInteger(version) || version < 1) {
-          throw new Error(`Invalid Redis cache version: ${versionKey}`);
-        }
-
-        return version;
-      }
-
-      await redisClient.set(versionKey, String(DEFAULT_VERSION), {
-        NX: true,
-      });
-
-      const currentVersion = await redisClient.get(versionKey);
-
-      if (currentVersion === null) return null;
-
-      const version = Number(currentVersion);
-
-      if (!Number.isSafeInteger(version) || version < 1) {
-        throw new Error(`Invalid Redis cache version: ${versionKey}`);
-      }
-
-      return version;
-    } catch (error) {
-      console.error("Redis GET VERSION error:", error);
-      return null;
+  async getRedisVersionFromMongo(resource: string): Promise<number> {
+    const rediCacheVersion = await RedisCacheVersion.findOne({ resource });
+    if (!rediCacheVersion) {
+      throw new Error(`Cache version not initialized: ${resource}`);
     }
+
+    return rediCacheVersion.version;
   }
 
-  async incrementVersion(versionKey: string): Promise<number | null> {
-    try {
-      await redisClient.set(versionKey, String(DEFAULT_VERSION), {
-        NX: true,
-      });
-      // console.error("Redis INCREMENT VERSION :");
-      return await redisClient.incr(versionKey);
-    } catch (error) {
-      console.error("Redis INCREMENT VERSION error:", error);
-      return null;
-    }
+  async initializeRedisVersionInMongo(resource: string): Promise<void> {
+    await RedisCacheVersion.updateOne(
+      { resource },
+      {
+        $setOnInsert: {
+          version: DEFAULT_VERSION,
+        },
+      },
+      { upsert: true },
+    );
   }
+
+  // async getVersion(versionKey: string): Promise<number | null> {
+  //   try {
+  //     const value = await redisClient.get(versionKey);
+
+  //     if (value !== null) {
+  //       const version = Number(value);
+
+  //       if (!Number.isSafeInteger(version) || version < 1) {
+  //         throw new Error(`Invalid Redis cache version: ${versionKey}`);
+  //       }
+
+  //       return version;
+  //     }
+
+  //     await redisClient.set(versionKey, String(DEFAULT_VERSION), {
+  //       NX: true,
+  //     });
+
+  //     const currentVersion = await redisClient.get(versionKey);
+
+  //     if (currentVersion === null) return null;
+
+  //     const version = Number(currentVersion);
+
+  //     if (!Number.isSafeInteger(version) || version < 1) {
+  //       throw new Error(`Invalid Redis cache version: ${versionKey}`);
+  //     }
+
+  //     return version;
+  //   } catch (error) {
+  //     console.error("Redis GET VERSION error:", error);
+  //     return null;
+  //   }
+  // }
+
+  async incrementRedisVersionInMongo(resource: string, session: mongoose.ClientSession): Promise<number> {
+    const redisCacheVersion = await RedisCacheVersion.findOneAndUpdate(
+      { resource },
+      {
+        $inc: {
+          version: 1,
+        },
+      },
+      { returnDocument: "after", session },
+    );
+    if (!redisCacheVersion) {
+      throw new Error(`Cache version not initialized: ${resource}`);
+    }
+
+    return redisCacheVersion.version;
+  }
+
+  // async incrementVersion(versionKey: string): Promise<number | null> {
+  //   try {
+  //     await redisClient.set(versionKey, String(DEFAULT_VERSION), {
+  //       NX: true,
+  //     });
+  //     // console.error("Redis INCREMENT VERSION :");
+  //     return await redisClient.incr(versionKey);
+  //   } catch (error) {
+  //     console.error("Redis INCREMENT VERSION error:", error);
+  //     return null;
+  //   }
+  // }
 
   /**
-   * buildVersionedKey("project", 1, "id:123")
-   * Result: project:v1:id:123
+   buildVersionedKey("project", 1, "id:123")
+   Result: project:v1:id:123
    */
   buildVersionedKey(prefix: string, version: number, key: string): string {
     return `${prefix}:v${version}:${key}`;
   }
 }
 
-const cacheService = new CacheService();
-export default cacheService;
+const redisCacheService = new CacheService();
+export default redisCacheService;

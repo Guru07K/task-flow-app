@@ -6,7 +6,7 @@ import { Task } from "../schema/task.schema";
 import mongoose from "mongoose";
 import { OutboxStatus } from "../models/outbox.model";
 import { Outbox } from "../schema/outbox.schema";
-import cacheService from "../config/redis/cache";
+import redisCacheService from "../config/redis/cache";
 
 export const createTask = async (projectId: string, input: CreateTaskInput, userId: string) => {
   const project = await Project.findOne({
@@ -78,7 +78,7 @@ export const createTask = async (projectId: string, input: CreateTaskInput, user
     if (!createdTask) {
       throw new ErrorHandler(500, "Failed to create task");
     }
-    await cacheService.incrementVersion("task:version");
+    await redisCacheService.incrementRedisVersionInMongo("task:version", session);
     return createdTask;
   } finally {
     await session.endSession();
@@ -161,7 +161,7 @@ export const updateTask = async (taskId: string, projectId: string, input: Updat
       throw new ErrorHandler(500, "Failed to update task");
     }
 
-    await cacheService.incrementVersion("task:version");
+    await redisCacheService.incrementRedisVersionInMongo("task:version", session);
 
     return updatedTask;
   } finally {
@@ -175,12 +175,12 @@ export const getProjectTasks = async (projectId: string, userId: string) => {
     throw new ErrorHandler(404, "Project not found");
   }
 
-  const version = await cacheService.getVersion("task:version");
+  const version = await redisCacheService.getRedisVersionFromMongo("task:version");
   let cacheKey: string | null = null;
 
   if (version) {
-    cacheKey = await cacheService.buildVersionedKey("task", version, `project:${projectId}:user:${userId}:list`);
-    const cachedTasks = await cacheService.get(cacheKey);
+    cacheKey = await redisCacheService.buildVersionedKey("task", version, `project:${projectId}:user:${userId}:list`);
+    const cachedTasks = await redisCacheService.get(cacheKey);
     if (cachedTasks) {
       // console.log("TASK CACHE HIT");
       return cachedTasks;
@@ -193,18 +193,18 @@ export const getProjectTasks = async (projectId: string, userId: string) => {
     .sort({ createdAt: -1 });
 
   if (cacheKey) {
-    await cacheService.set(cacheKey, task);
+    await redisCacheService.set(cacheKey, task);
   }
   return task;
 };
 
 export const getTask = async (taskId: string, projectId: string) => {
-  const version = await cacheService.getVersion("task:version");
+  const version = await redisCacheService.getRedisVersionFromMongo("task:version");
 
   let cacheKey: string | null = null;
   if (version !== null) {
-    cacheKey = cacheService.buildVersionedKey("task", version, `id:${taskId}:project:${projectId}`);
-    const cachedTask = await cacheService.get(cacheKey);
+    cacheKey = redisCacheService.buildVersionedKey("task", version, `id:${taskId}:project:${projectId}`);
+    const cachedTask = await redisCacheService.get(cacheKey);
 
     if (cachedTask !== null) {
       return cachedTask;
@@ -217,19 +217,29 @@ export const getTask = async (taskId: string, projectId: string) => {
   }
 
   if (cacheKey) {
-    await cacheService.set(cacheKey, task);
+    await redisCacheService.set(cacheKey, task);
   }
   return task;
 };
 
 export const deleteTask = async (taskId: string, projectId: string) => {
-  const task = await Task.findByIdAndDelete(taskId);
+  const session = await mongoose.startSession();
 
-  if (!task) {
-    throw new ErrorHandler(404, "Task not found");
+  try {
+    let deletedTask;
+    await session.withTransaction(async () => {
+      const task = await Task.findByIdAndDelete(taskId);
+
+      if (!task) {
+        throw new ErrorHandler(404, "Task not found");
+      }
+
+      await redisCacheService.incrementRedisVersionInMongo("task:version", session);
+      deletedTask = task;
+    });
+
+    return deletedTask;
+  } finally {
+    await session.endSession();
   }
-
-  await cacheService.incrementVersion("task:version");
-
-  return task;
 };
